@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { log } from '../log.js';
-import { KeyObject } from 'crypto';
 
 export async function pushRepo(username, password) {
 

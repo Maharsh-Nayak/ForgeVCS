@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import log from '../log.js';
 import axios from 'axios';
 
 export async function pullRepo() {

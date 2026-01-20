@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { cwd } from 'process';
 
-export function pushRepo(repoPath, remotePath) {
+export function setRemote(remotePath) {
 
     let configPath = path.join(process.cwd(), ".forge", 'config.json');
 

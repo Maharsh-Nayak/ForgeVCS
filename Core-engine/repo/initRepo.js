@@ -5,6 +5,9 @@ import path from 'path';
 
 export function initRepo(repoPath){
 
+    console.log("Initializing new repository at " + repoPath);
+    console.log("process.cwd(): " + process.cwd());
+
     let forgePath = path.join(repoPath, ".forge");
     if(!fs.existsSync(forgePath)){
         fs.mkdirSync(forgePath);
