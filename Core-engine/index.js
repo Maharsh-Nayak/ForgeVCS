@@ -7,6 +7,7 @@ import { pullRepo } from "./repo/pullRepo.js";
 import { pushRepo } from "./repo/pushRepo.js";
 import { setRemote } from "./repo/setRemote.js";
 import { commitRepo } from "./repo/commitRepo.js";
+import { cloneRepo } from "./repo/cloneRepo.js";
 
 yargs(hideBin(process.argv))
   .command("init", "Initialize a new repository", () => {}, async () => {
@@ -41,6 +42,19 @@ yargs(hideBin(process.argv))
         });
     }, async (argv) => {
         await setRemote(argv.url);
+    })
+  .command("clone <url> [dir]", "Clone a remote repository", (yargs) => {
+        yargs.positional("url", {
+        describe: "URL of the remote repository",
+        type: "string",
+        });
+        yargs.positional("dir", {
+        describe: "Directory to clone into (defaults to current directory)",
+        type: "string",
+        default: process.cwd(),
+        });
+    }, async (argv) => {
+        await cloneRepo(argv.url, argv.dir || process.cwd());
     })
   .demandCommand(1, "You need at least one command before moving on")
   .strict()

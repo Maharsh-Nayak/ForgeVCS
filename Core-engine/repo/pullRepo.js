@@ -2,75 +2,93 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 
-export async function pullRepo() {
-    let logPath = path.join(process.cwd(), ".forge");
+// Helper function to parse commit object (plain text format)
+function parseCommit(commitContent) {
+    const lines = commitContent.toString('utf-8').split('\n');
+    const commit = { tree: null, parent: null, author: null, committer: null, message: '' };
+    
+    let messageStart = false;
+    for (const line of lines) {
+        if (line.startsWith('tree ')) {
+            commit.tree = line.slice(5).trim();
+        } else if (line.startsWith('parent ')) {
+            commit.parent = line.slice(7).trim();
+        } else if (line.startsWith('author ')) {
+            commit.author = line.slice(7).trim();
+        } else if (line.startsWith('committer ')) {
+            commit.committer = line.slice(10).trim();
+        } else if (line === '') {
+            messageStart = true;
+        } else if (messageStart) {
+            commit.message += (commit.message ? '\n' : '') + line;
+        }
+    }
+    
+    return commit;
+}
 
-    if (!fs.existsSync(logPath)) {
+// Helper function to write object to correct path
+function writeObjectToRepo(repoPath, hash, data) {
+    const dir = path.join(repoPath, ".forge", "objects", hash.slice(0, 2));
+    const file = path.join(dir, hash.slice(2));
+    
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    // Only write if it doesn't exist (immutability)
+    if (!fs.existsSync(file)) {
+        fs.writeFileSync(file, data);
+    }
+}
+
+export async function pullRepo() {
+    const repoPath = process.cwd();
+    const forgePath = path.join(repoPath, ".forge");
+
+    if (!fs.existsSync(forgePath)) {
         throw new Error("No repository found. Please initialize a repository first.");
     }
 
-    let remotePath = path.join(process.cwd(), ".forge", 'config.json');
+    const configPath = path.join(repoPath, ".forge", 'config.json');
 
-    if (!fs.existsSync(remotePath)) {
+    if (!fs.existsSync(configPath)) {
         throw new Error("No remote repository set. Please set a remote repository before pulling.");
     }
 
-    let remote = JSON.parse(fs.readFileSync(remotePath, 'utf-8')).remote;
+    const remote = JSON.parse(fs.readFileSync(configPath, 'utf-8')).remote;
 
-    let currentCommit = fs.readFileSync(path.join(process.cwd(), ".forge", "refs", "heads", "main"), 'utf-8').trim();
+    const currentMainPath = path.join(repoPath, ".forge", "refs", "heads", "main");
+    let currentCommit = null;
+    if (fs.existsSync(currentMainPath)) {
+        currentCommit = fs.readFileSync(currentMainPath, 'utf-8').trim();
+    }
 
-    let {newMain, rawObjects} = await axios.get(`${remote}/pull/${currentCommit}`).then(response => response.data)
-    .catch(error => {
+    // Request objects from remote
+    const response = await axios.get(`${remote}/pull/${currentCommit || ''}`).catch(error => {
         throw new Error("Failed to fetch pull data: " + error.message);
     });
 
-    let newHead = newMain;
-    let objects = JSON.parse(rawObjects);
-
-
-
-    while(newMain !== currentCommit) {
-        let obj = objects[newMain];
-        let commitData = JSON.parse(Buffer.from(objects[newMain], 'base64').toString('utf-8'));
-        fs.mkdirSync(path.join(process.cwd(), ".forge", "objects", newMain.slice(0, 2)), { recursive: true });
-        fs.writeFileSync(path.join(process.cwd(), ".forge", "objects", newMain.slice(2)), Buffer.from(commitData, 'base64'));
-
-        //explore the tree and write all files
-        let treeHash = commitData.tree;
-
-        let tree = objects[treeHash];
-
-        // write tree
-
-        fs.mkdirSync(path.join(process.cwd(), ".forge", "objects", treeHash.slice(0, 2)), { recursive: true });
-        
-        let treeData = JSON.parse(Buffer.from(tree, 'base64').toString('utf-8'));
-        
-        for(let entry of treeData) {
-
-            let fileName = entry.name;
-            let fileHash = entry.hash;
-            let fileType = entry.type;
-
-            fs.writeFileSync(path.join(process.cwd(), ".forge", "objects", treeHash.slice(2)), Buffer.from(fileType, 'base64'));
-            fs.appendFileSync(path.join(process.cwd(), ".forge", "objects", treeHash.slice(2)), Buffer.from(fileHash, 'base64'));
-            fs.appendFileSync(path.join(process.cwd(), ".forge", "objects", treeHash.slice(2)), Buffer.from(fileName, 'base64'));
-
+    const { newMain, rawObjects } = response.data;
     
-            if (fileType === 'blob') {
-                let blobData = objects[fileHash];
-                fs.writeFileSync(path.join(process.cwd(), fileName), Buffer.from(blobData, 'base64'));
-                fs.mkdirSync(path.join(process.cwd(), ".forge", "objects", fileHash.slice(0, 2)), { recursive: true });
-                fs.writeFileSync(path.join(process.cwd(), ".forge", "objects", fileHash.slice(2)), Buffer.from(blobData, 'base64'));
-            }
-
-        }
-
-        newMain = commitData.parent;
-
+    if (!newMain) {
+        console.log("Remote repository is empty or up to date.");
+        return;
     }
 
-    fs.writeFileSync(path.join(process.cwd(), ".forge", "refs", "heads", "main"), newHead);
-    log("Repository successfully pulled from remote.");
+    // Create a map of hash -> object data for easy lookup
+    const objectMap = new Map();
+    for (const obj of rawObjects) {
+        objectMap.set(obj.hash, Buffer.from(obj.data, 'base64'));
+    }
 
+    // Write all objects to repository
+    for (const obj of rawObjects) {
+        writeObjectToRepo(repoPath, obj.hash, Buffer.from(obj.data, 'base64'));
+    }
+
+    // Update the main branch reference
+    fs.writeFileSync(currentMainPath, newMain);
+    
+    console.log(`Repository successfully pulled from remote. New main: ${newMain}`);
 }
