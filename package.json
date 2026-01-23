@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./Core-engine/repo/index.js",
   "bin": {
-    "forge": "./Core-engine/index.js"
+    "forge": "Core-engine/index.js"
   },
   "exports": {
     ".": "./Core-engine/repo/index.js",
