@@ -1,9 +1,41 @@
 {
   "name": "forgevcs",
   "version": "1.0.0",
+  "description": "A lightweight Git-like version control system built with Node.js",
   "type": "module",
+  "main": "./Core-engine/repo/index.js",
   "bin": {
     "forge": "./Core-engine/index.js"
+  },
+  "exports": {
+    ".": "./Core-engine/repo/index.js",
+    "./repo": "./Core-engine/repo/index.js",
+    "./objects": "./Core-engine/objects/index.js",
+    "./index": "./Core-engine/index/index.js",
+    "./commit": "./Core-engine/commit/index.js"
+  },
+  "keywords": [
+    "vcs",
+    "version-control",
+    "git",
+    "git-like",
+    "source-control",
+    "repository",
+    "commit",
+    "version-control-system"
+  ],
+  "author": "Maharsh Nayak <maharshnayak5@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maharshnayak5/ForgeVCS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maharshnayak5/ForgeVCS/issues"
+  },
+  "homepage": "https://github.com/maharshnayak5/ForgeVCS#readme",
+  "engines": {
+    "node": ">=16.0.0"
   },
   "dependencies": {
     "axios": "^1.13.2",

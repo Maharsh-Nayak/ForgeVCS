@@ -1,0 +1,17 @@
+# Test files
+Core-engine/Test/
+
+# Development files
+.git/
+.vscode/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
